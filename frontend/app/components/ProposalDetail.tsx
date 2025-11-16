@@ -8,6 +8,7 @@ import MarkdownContent from './MarkdownContent';
 import VoteJson from '../../open_vote_contracts/out/Vote.sol/Vote.json';
 import { VoteActionButtons } from './VoteActionButtons';
 import ArkivChat from './ArkivChat';
+import BrandedLoader from './BrandedLoader';
 
 interface ProposalDetailProps {
   proposalId: number;
@@ -17,6 +18,13 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
   // Use integrated hook instead of just backend data
   const { proposal, isLoading, error, refetch } = useIntegratedProposal(proposalId);
   const [showFullContent, setShowFullContent] = useState(false);
+
+  const scrollToContent = () => {
+    const contentElement = document.getElementById('proposal-content');
+    if (contentElement) {
+      contentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Generate random anonymous name on mount
   const [userName] = useState(() => {
@@ -31,9 +39,7 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-white/70" style={{ fontFamily: 'Handjet, monospace' }}>
-          Loading proposal...
-        </div>
+        <BrandedLoader />
       </div>
     );
   }
@@ -73,8 +79,8 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Main Content */}
-      <div className="lg:col-span-2">
-        <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl md:p-8">
+      <div className="lg:col-span-2 animate-slide-in-left">
+        <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl md:p-8 hover:border-white/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,0,255,0.2)]">
           {/* Title */}
           <h1
             className="mb-6 text-3xl font-bold text-white md:text-4xl lg:text-5xl"
@@ -84,14 +90,20 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
           </h1>
 
           {/* Arkiv Content - Styled Markdown */}
-          <div className="max-w-none">
+          <div id="proposal-content" className="max-w-none">
             <MarkdownContent content={showFullContent ? arkivContent : contentPreview} />
           </div>
 
           {/* Show More Button */}
           {hasMoreContent && (
             <button
-              onClick={() => setShowFullContent(!showFullContent)}
+              onClick={() => {
+                setShowFullContent(!showFullContent);
+                if (!showFullContent) {
+                  // Scroll to content after state update
+                  setTimeout(scrollToContent, 100);
+                }
+              }}
               className="mt-6 flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-2 text-white/80 backdrop-blur-xl transition hover:bg-white/20"
               style={{ fontFamily: 'Handjet, monospace' }}
             >
@@ -128,9 +140,9 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
       </div>
 
       {/* Sidebar */}
-      <div className="space-y-6">
+      <div className="space-y-6 animate-slide-in-right">
         {/* Vote Status Card */}
-        <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl">
+        <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl hover:border-white/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,255,255,0.2)]">
           <h2
             className="mb-4 text-xl font-bold text-white"
             style={{ fontFamily: 'Handjet, monospace' }}
@@ -156,13 +168,19 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
               </span>
             )}
             {proposal.isUserRegistered && (
-              <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs text-cyan-300">
-                ✓ You're Registered
+              <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs text-cyan-300 flex items-center gap-1 animate-fade-in">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                </svg>
+                You're Registered
               </span>
             )}
             {proposal.hasUserVoted && (
-              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">
-                ✓ You Voted
+              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300 flex items-center gap-1 animate-fade-in">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                </svg>
+                You Voted
               </span>
             )}
           </div>
@@ -229,9 +247,9 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
 
           {/* Privacy Message While Voting In Progress */}
           {!voteStats.isFinalized && voteStats.votedVoters > 0 && (
-            <div className="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3">
+            <div className="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 animate-fade-in">
               <div className="flex items-center gap-2 text-sm text-purple-300">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 <span className="font-semibold">Votes are encrypted</span>
@@ -283,7 +301,7 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
 
         {/* Voters List */}
         {voteStats.voters.length > 0 && (
-          <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl">
+          <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl hover:border-white/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,255,255,0.2)]">
             <h2
               className="mb-4 text-xl font-bold text-white"
               style={{ fontFamily: 'Handjet, monospace' }}
@@ -293,14 +311,19 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
             <div className="space-y-2">
               {voteStats.voters.map((voter, idx) => (
                 <div
-                  key={voter.address}
+                  key={`voter-${idx}-${voter.address}`}
                   className="flex items-center justify-between rounded-lg bg-white/5 p-2 text-xs"
                 >
                   <span className="font-mono text-white/70">
                     {voter.address.slice(0, 6)}...{voter.address.slice(-4)}
                   </span>
                   {voter.hasVoted && (
-                    <span className="text-green-400">✓ Voted</span>
+                    <span className="text-green-400 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                      </svg>
+                      Voted
+                    </span>
                   )}
                 </div>
               ))}
@@ -309,7 +332,7 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
         )}
 
         {/* Metadata Card */}
-        <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl">
+        <div className="rounded-3xl border border-white/20 bg-white/20 p-6 backdrop-blur-xl hover:border-white/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,255,255,0.2)]">
           <h2
             className="mb-4 text-xl font-bold text-white"
             style={{ fontFamily: 'Handjet, monospace' }}
@@ -341,8 +364,8 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
       </div>
 
       {/* Chat Section - Full Width */}
-      <div className="lg:col-span-3">
-        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 backdrop-blur-xl">
+      <div className="lg:col-span-3 animate-slide-in-up">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 backdrop-blur-xl hover:border-white/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,215,0,0.2)]">
           <div className="mb-3 flex items-center justify-between">
             <h2
               className="text-xl font-bold text-white"

@@ -1,25 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { createPublicClient, http } from 'viem';
-import { defineChain } from 'viem';
-
-// Define Mendoza chain (Arkiv testnet)
-const mendoza = defineChain({
-  id: 31337, // Arkiv testnet chain ID
-  name: 'Mendoza',
-  network: 'mendoza',
-  nativeCurrency: {
-    name: 'Arkiv',
-    symbol: 'ARKIV',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: { http: ['https://mendoza.hoodi.arkiv.network/rpc'] },
-    public: { http: ['https://mendoza.hoodi.arkiv.network/rpc'] },
-  },
-  testnet: true,
-});
+import { createPublicClient, http } from '@arkiv-network/sdk';
+import { mendoza } from '@arkiv-network/sdk/chains';
+import { eq } from '@arkiv-network/sdk/query';
 
 interface ChatMessage {
   id: string;
@@ -42,19 +26,13 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
   const [isConnected, setIsConnected] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const publicClientRef = useRef<any>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const MESSAGE_TTL_MS = 60000; // 1 minute in milliseconds
   const EXPIRING_THRESHOLD_MS = 10000; // Start fading at 10 seconds remaining
+  const ARKIV_RPC_URL = process.env.NEXT_PUBLIC_ARKIV_RPC_URL || 'https://mendoza.hoodi.arkiv.network/rpc';
 
-  // Auto-scroll to bottom when new messages arrive
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // No auto-scroll - let users control their own scrolling
 
   // Check for expiring/expired messages every second
   useEffect(() => {
@@ -86,12 +64,17 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
           .filter((msg) => {
             if (msg.isExpired) {
               const timeSinceExpiry = now - (msg.timestamp + MESSAGE_TTL_MS);
-              return timeSinceExpiry < 2000; // Keep for 2 seconds after expiry for animation
+              return timeSinceExpiry < 3000; // Keep for 3 seconds after expiry for animation
             }
             return true;
           });
 
-        return hasChanges || updatedMessages.length !== prevMessages.length ? updatedMessages : prevMessages;
+        // Only update if something actually changed
+        if (!hasChanges && updatedMessages.length === prevMessages.length) {
+          return prevMessages;
+        }
+
+        return updatedMessages;
       });
     };
 
@@ -99,26 +82,38 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
     return () => clearInterval(interval);
   }, [MESSAGE_TTL_MS, EXPIRING_THRESHOLD_MS]);
 
-  // Initialize Arkiv client and subscription
+  // Load messages helper that creates a fresh client each time
+  const loadMessages = async () => {
+    try {
+      // Create a fresh client for each request to avoid filter issues
+      const client = createPublicClient({
+        chain: mendoza,
+        transport: http(ARKIV_RPC_URL),
+      });
+
+      await loadExistingMessages(client);
+    } catch (error) {
+      console.error('[ArkivChat] Error loading messages:', error);
+    }
+  };
+
+  // Initialize chat and start polling
   useEffect(() => {
     let mounted = true;
 
     const initializeChat = async () => {
       try {
-        // Create public client for reading
-        const publicClient = createPublicClient({
-          chain: mendoza,
-          transport: http(process.env.NEXT_PUBLIC_ARKIV_RPC_URL || 'https://mendoza.hoodi.arkiv.network/rpc'),
-        });
+        // Initial load
+        await loadMessages();
 
-        publicClientRef.current = publicClient;
+        // Poll for new messages every 3 seconds
+        const interval = setInterval(() => {
+          if (mounted) {
+            loadMessages();
+          }
+        }, 3000);
 
-        // Load existing messages
-        await loadExistingMessages(publicClient);
-
-        // Subscribe to new messages
-        const stopSubscription = await subscribeToMessages(publicClient);
-        unsubscribeRef.current = stopSubscription;
+        pollIntervalRef.current = interval;
 
         if (mounted) {
           setIsConnected(true);
@@ -132,9 +127,9 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
 
     return () => {
       mounted = false;
-      // Clean up subscription on unmount
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
+      // Clean up polling on unmount
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
       }
     };
   }, [roomId]);
@@ -142,88 +137,104 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
   // Load existing messages from Arkiv
   const loadExistingMessages = async (client: any) => {
     try {
-      const query = client
+      console.log('[ArkivChat] Loading messages for room:', roomId);
+
+      // Build query using the SDK's query builder with eq() helpers
+      const result = await client
         .buildQuery()
         .where([
-          { key: 'type', value: 'chat_message' },
-          { key: 'roomId', value: roomId },
-        ]);
+          eq('type', 'chat_message'),
+          eq('roomId', roomId),
+        ])
+        .fetch();
 
-      const result = await query.fetch();
+      console.log('[ArkivChat] Raw query result:', result);
+      console.log('[ArkivChat] Entities count:', result.entities?.length || 0);
 
-      const loadedMessages: ChatMessage[] = result.entities.map((entity: any) => {
-        const attrs = Object.fromEntries(
-          entity.attributes.map((a: any) => [a.key, a.value])
-        );
+      // Fetch full entity details for each entity key
+      const loadedMessages: ChatMessage[] = [];
 
-        return {
-          id: entity.entityKey,
-          sender: attrs.sender || 'Unknown',
-          content: new TextDecoder().decode(entity.payload),
-          timestamp: parseInt(attrs.timestamp || '0'),
-          entityKey: entity.entityKey,
-        };
-      });
+      for (const partialEntity of result.entities || []) {
+        try {
+          console.log('[ArkivChat] Fetching full entity for key:', partialEntity.key);
+
+          // Get the full entity with attributes and payload
+          const fullEntity = await client.getEntity(partialEntity.key);
+
+          console.log('[ArkivChat] Full entity:', fullEntity);
+          console.log('[ArkivChat] Full entity attributes:', fullEntity.attributes);
+          console.log('[ArkivChat] Full entity payload:', fullEntity.payload);
+
+          const attrs = Object.fromEntries(
+            fullEntity.attributes.map((a: any) => [a.key, a.value])
+          );
+
+          console.log('[ArkivChat] Parsed attributes:', attrs);
+
+          // Decode payload using toText() method
+          let content = '';
+          try {
+            if (typeof fullEntity.toText === 'function') {
+              content = fullEntity.toText();
+            } else if (fullEntity.payload && typeof fullEntity.payload === 'object') {
+              const bytes = fullEntity.payload.data || fullEntity.payload;
+              content = new TextDecoder().decode(new Uint8Array(bytes));
+            } else if (typeof fullEntity.payload === 'string') {
+              content = fullEntity.payload;
+            } else {
+              content = '[Unknown payload format]';
+            }
+
+            console.log('[ArkivChat] Decoded content:', content);
+          } catch (err) {
+            console.error('[ArkivChat] Error decoding payload:', err);
+            content = '[Error decoding message]';
+          }
+
+          const message = {
+            id: fullEntity.key || `temp-${Date.now()}`,
+            sender: attrs.sender || 'Unknown',
+            content,
+            timestamp: parseInt(attrs.timestamp || Date.now().toString()),
+            entityKey: fullEntity.key,
+          };
+
+          console.log('[ArkivChat] Final message:', message);
+          loadedMessages.push(message);
+        } catch (err) {
+          console.error('[ArkivChat] Error fetching entity:', partialEntity.key, err);
+        }
+      }
 
       // Sort by timestamp
       loadedMessages.sort((a, b) => a.timestamp - b.timestamp);
-      setMessages(loadedMessages);
+      console.log('[ArkivChat] Total messages loaded:', loadedMessages.length);
+
+      // Only update state if messages have actually changed
+      setMessages((prevMessages) => {
+        // Check if the messages are different
+        if (prevMessages.length !== loadedMessages.length) {
+          return loadedMessages;
+        }
+
+        // Check if any message content has changed
+        const hasChanges = loadedMessages.some((newMsg, idx) => {
+          const oldMsg = prevMessages[idx];
+          return !oldMsg ||
+                 oldMsg.entityKey !== newMsg.entityKey ||
+                 oldMsg.content !== newMsg.content ||
+                 oldMsg.timestamp !== newMsg.timestamp;
+        });
+
+        if (hasChanges) {
+          return loadedMessages;
+        }
+
+        // No changes, keep previous state
+        return prevMessages;
+      });
     } catch (error) {
       console.error('[ArkivChat] Error loading messages:', error);
-    }
-  };
-
-  // Subscribe to real-time message events
-  const subscribeToMessages = async (client: any): Promise<() => void> => {
-    try {
-      const stopFn = await client.subscribeEntityEvents({
-        onEntityCreated: async (event: any) => {
-          try {
-            const entity = await client.getEntity(event.entityKey);
-            const attrs = Object.fromEntries(
-              entity.attributes.map((a: any) => [a.key, a.value])
-            );
-
-            // Only process chat messages for this room
-            if (attrs.type === 'chat_message' && attrs.roomId === roomId) {
-              const newMessage: ChatMessage = {
-                id: entity.entityKey,
-                sender: attrs.sender || 'Unknown',
-                content: new TextDecoder().decode(entity.payload),
-                timestamp: parseInt(attrs.timestamp || Date.now().toString()),
-                entityKey: entity.entityKey,
-              };
-
-              setMessages((prev) => {
-                // Avoid duplicates
-                if (prev.some((m) => m.entityKey === newMessage.entityKey)) {
-                  return prev;
-                }
-                return [...prev, newMessage];
-              });
-
-              console.log('[ArkivChat] New message received:', newMessage.content);
-            }
-          } catch (err) {
-            console.error('[ArkivChat] Error processing new message:', err);
-          }
-        },
-
-        onEntityExpiresInExtended: (event: any) => {
-          console.log('[ArkivChat] Message extended:', event.entityKey);
-        },
-
-        onError: (err: any) => {
-          console.error('[ArkivChat] Subscription error:', err);
-          setIsConnected(false);
-        },
-      });
-
-      console.log('[ArkivChat] Subscribed to real-time messages for room:', roomId);
-      return stopFn;
-    } catch (error) {
-      console.error('[ArkivChat] Subscription setup error:', error);
-      return () => {};
     }
   };
 
@@ -257,25 +268,11 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
       const result = await response.json();
       console.log('[ArkivChat] Message sent:', result);
 
-      // Immediately add the message optimistically to the UI
-      const optimisticMessage: ChatMessage = {
-        id: result.entityKey || `temp-${Date.now()}`,
-        sender: userName,
-        content: messageContent,
-        timestamp: messageTimestamp,
-        entityKey: result.entityKey || `temp-${Date.now()}`,
-      };
-
-      setMessages((prev) => {
-        // Avoid duplicates
-        if (prev.some((m) => m.entityKey === optimisticMessage.entityKey)) {
-          return prev;
-        }
-        return [...prev, optimisticMessage];
-      });
-
-      // Clear input
+      // Clear input immediately
       setInput('');
+
+      // Trigger an immediate refresh to show the new message
+      await loadMessages();
     } catch (error) {
       console.error('[ArkivChat] Error sending message:', error);
       alert('Failed to send message. Please try again.');
@@ -305,7 +302,7 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 px-4 py-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto space-y-3 px-4 py-4">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
@@ -318,14 +315,14 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
             </div>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, idx) => {
             const age = Date.now() - msg.timestamp;
             const timeRemaining = Math.max(0, MESSAGE_TTL_MS - age);
             const secondsRemaining = Math.ceil(timeRemaining / 1000);
 
             return (
               <div
-                key={msg.entityKey}
+                key={msg.entityKey || msg.id || `msg-${idx}`}
                 className={`flex flex-col gap-1 transition-all duration-1000 ${
                   msg.isExpired
                     ? 'opacity-0 scale-95 -translate-y-2'

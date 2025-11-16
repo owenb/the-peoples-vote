@@ -1,5 +1,5 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { cookieStorage, createStorage } from 'wagmi';
+import { cookieStorage, createStorage, http } from 'wagmi';
 import { defineChain } from 'viem';
 
 // Paseo Asset Hub testnet chain - THE ONLY CHAIN WE USE
@@ -39,4 +39,17 @@ export const config = getDefaultConfig({
   storage: createStorage({
     storage: cookieStorage,
   }),
+  transports: {
+    [paseoAssetHub.id]: http(paseoAssetHub.rpcUrls.default.http[0], {
+      // Disable filter-based polling to avoid "filter not found" errors
+      // Use block-based polling instead
+      batch: false,
+      fetchOptions: {
+        // Reduce request frequency to be more RPC-friendly
+        cache: 'no-store',
+      },
+    }),
+  },
+  // Reduce polling frequency to avoid rate limits and filter issues
+  pollingInterval: 12_000, // 12 seconds instead of default 4 seconds
 });

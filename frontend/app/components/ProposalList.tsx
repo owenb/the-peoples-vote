@@ -2,6 +2,7 @@
 
 import { useAllProposalsWithStats } from '../hooks/useProposals';
 import type { ProposalWithVoteStats } from '../api/types';
+import BrandedLoader from './BrandedLoader';
 
 interface ProposalCardProps {
   proposal: ProposalWithVoteStats;
@@ -15,7 +16,7 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-xl transition hover:bg-white/20"
+      className="cursor-pointer rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,0,255,0.3)] hover:scale-[1.02] active:scale-[0.98]"
     >
       {/* Title */}
       <h3
@@ -87,9 +88,7 @@ export default function ProposalList({ onSelectProposal }: ProposalListProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-white/70" style={{ fontFamily: 'Handjet, monospace' }}>
-          Loading proposals...
-        </div>
+        <BrandedLoader />
       </div>
     );
   }
