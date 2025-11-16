@@ -283,4 +283,7 @@ dist
 reactjs/next-env.d.ts
 reactjs/public/
 
+# xx-node state files
+xx-node/xxstate/
+
 *~
