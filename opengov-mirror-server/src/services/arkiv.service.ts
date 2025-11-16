@@ -90,15 +90,16 @@ export class ArkivService {
       const ttlSeconds = settings.arkiv.ttlDays * 24 * 60 * 60;
 
       // Create entity in Arkiv
-      const { entityKey, txReceipt } = await this.walletClient.createEntity({
+      const result = await this.walletClient.createEntity({
         payload: stringToPayload(description),
         contentType: 'text/plain',
         attributes,
         expiresIn: ttlSeconds,
       });
 
-      const txHash = txReceipt?.hash;
-      const blockNumber = txReceipt?.blockNumber;
+      const entityKey = result.entityKey;
+      const txHash = (result as any).txReceipt?.hash;
+      const blockNumber = (result as any).txReceipt?.blockNumber;
 
       logger.info({
         msg: '✓ Description stored in Arkiv',
@@ -124,7 +125,7 @@ export class ArkivService {
    */
   async retrieveDescription(entityKey: string): Promise<string> {
     try {
-      const entity = await this.publicClient.getEntity(entityKey);
+      const entity = await this.publicClient.getEntity(entityKey as `0x${string}`);
       const description = entity.toText();
 
       logger.info({
@@ -170,10 +171,11 @@ export class ArkivService {
    */
   async extendExpiration(entityKey: string, additionalSeconds: number): Promise<void> {
     try {
-      const { txHash } = await this.walletClient.extendEntity({
-        entityKey,
+      const result = await this.walletClient.extendEntity({
+        entityKey: entityKey as `0x${string}`,
         expiresIn: additionalSeconds,
       });
+      const txHash = (result as any).txHash;
 
       logger.info({
         msg: 'Extended entity expiration',
@@ -196,10 +198,11 @@ export class ArkivService {
     const stopFn = await this.publicClient.subscribeEntityEvents({
       onEntityCreated: async (event) => {
         try {
-          const entity = await this.publicClient.getEntity(event.entityKey);
-          const attrs = Object.fromEntries(
-            entity.attributes.map((a) => [a.key, a.value])
-          );
+          const entity = await this.publicClient.getEntity(event.entityKey as `0x${string}`);
+          const attrs: Record<string, string> = {};
+          for (const attr of entity.attributes) {
+            attrs[attr.key] = String(attr.value);
+          }
 
           if (attrs.type === 'opengov-proposal') {
             logger.info({
