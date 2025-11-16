@@ -13,7 +13,7 @@ const MESSAGE_PART_VERSION = 0;
 const FIRST_MESSAGE_PART_VERSION = 0;
 
 export const MAX_MESSAGE_PARTS = 255;
-export const DEFAULT_MAX_MESSAGE_LENGTH = 926;
+export const DEFAULT_MAX_MESSAGE_LENGTH = 100;
 export const DEFAULT_MESSAGE_TYPE = 2; // catalog.XxMessage
 
 const textEncoder = new TextEncoder();
