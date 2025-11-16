@@ -7,6 +7,7 @@ import { useIntegratedProposal } from '../hooks/useIntegratedProposal';
 import MarkdownContent from './MarkdownContent';
 import VoteJson from '../../open_vote_contracts/out/Vote.sol/Vote.json';
 import { VoteActionButtons } from './VoteActionButtons';
+import ArkivChat from './ArkivChat';
 
 interface ProposalDetailProps {
   proposalId: number;
@@ -16,6 +17,16 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
   // Use integrated hook instead of just backend data
   const { proposal, isLoading, error, refetch } = useIntegratedProposal(proposalId);
   const [showFullContent, setShowFullContent] = useState(false);
+
+  // Generate random anonymous name on mount
+  const [userName] = useState(() => {
+    const adjectives = ['Swift', 'Bright', 'Bold', 'Quick', 'Silent', 'Wise', 'Brave', 'Calm', 'Clever', 'Noble'];
+    const nouns = ['Voter', 'Citizen', 'Delegate', 'Member', 'Participant', 'Observer', 'Advocate', 'Supporter'];
+    const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+    const randomNum = Math.floor(Math.random() * 1000);
+    return `${randomAdj}${randomNoun}${randomNum}`;
+  });
 
   if (isLoading) {
     return (
@@ -112,15 +123,6 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
             >
               View on Polkassembly →
             </a>
-            <a
-              href={proposal.arkivUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white/80 backdrop-blur-xl transition hover:bg-white/20"
-              style={{ fontFamily: 'Handjet, monospace' }}
-            >
-              View on Arkiv →
-            </a>
           </div>
         </div>
       </div>
@@ -209,8 +211,8 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
             )}
           </div>
 
-          {/* Vote Results */}
-          {voteStats.votedVoters > 0 && (
+          {/* Vote Results - ONLY SHOW AFTER VOTING IS COMPLETE */}
+          {voteStats.isFinalized && voteStats.votedVoters > 0 && (
             <div className="mt-4 space-y-2 border-t border-white/20 pt-4">
               <div className="flex justify-between text-sm text-white/70">
                 <span>Yes Votes</span>
@@ -222,6 +224,21 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
                   {voteStats.votedVoters - voteStats.yesVotes}
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Privacy Message While Voting In Progress */}
+          {!voteStats.isFinalized && voteStats.votedVoters > 0 && (
+            <div className="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3">
+              <div className="flex items-center gap-2 text-sm text-purple-300">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span className="font-semibold">Votes are encrypted</span>
+              </div>
+              <p className="mt-1 text-xs text-purple-200/70">
+                All votes remain private until everyone has voted. Results will be revealed only after voting is complete.
+              </p>
             </div>
           )}
 
@@ -320,6 +337,27 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Chat Section - Full Width */}
+      <div className="lg:col-span-3">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 backdrop-blur-xl">
+          <div className="mb-3 flex items-center justify-between">
+            <h2
+              className="text-xl font-bold text-white"
+              style={{ fontFamily: 'Handjet, monospace' }}
+            >
+              Discussion
+            </h2>
+            <span className="text-xs text-white/40">{userName}</span>
+          </div>
+          <div className="h-[400px] rounded-xl border border-white/10 bg-black/20">
+            <ArkivChat roomId={`proposal-${proposalId}`} userName={userName} />
+          </div>
+          <p className="mt-2 text-xs text-white/30">
+            Messages expire after 1 minute
+          </p>
         </div>
       </div>
     </div>

@@ -231,6 +231,9 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
   const sendMessage = async () => {
     if (!input.trim() || isSending) return;
 
+    const messageContent = input.trim();
+    const messageTimestamp = Date.now();
+
     setIsSending(true);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -242,8 +245,8 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
         body: JSON.stringify({
           roomId,
           sender: userName,
-          content: input.trim(),
-          timestamp: Date.now(),
+          content: messageContent,
+          timestamp: messageTimestamp,
         }),
       });
 
@@ -253,6 +256,23 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
 
       const result = await response.json();
       console.log('[ArkivChat] Message sent:', result);
+
+      // Immediately add the message optimistically to the UI
+      const optimisticMessage: ChatMessage = {
+        id: result.entityKey || `temp-${Date.now()}`,
+        sender: userName,
+        content: messageContent,
+        timestamp: messageTimestamp,
+        entityKey: result.entityKey || `temp-${Date.now()}`,
+      };
+
+      setMessages((prev) => {
+        // Avoid duplicates
+        if (prev.some((m) => m.entityKey === optimisticMessage.entityKey)) {
+          return prev;
+        }
+        return [...prev, optimisticMessage];
+      });
 
       // Clear input
       setInput('');
@@ -272,32 +292,30 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
   };
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/20 p-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Handjet, monospace' }}>
-            Arkiv Chat
-          </h2>
-          <p className="text-sm text-white/60">Room: {roomId}</p>
-        </div>
+    <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/20 backdrop-blur-sm">
+      {/* Chat Header */}
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2">
-          <div
-            className={`h-3 w-3 rounded-full ${
-              isConnected ? 'bg-green-500' : 'bg-red-500'
-            }`}
-          />
-          <span className="text-sm text-white/70">
-            {isConnected ? 'Connected' : 'Disconnected'}
+          <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+          <span className="text-xs text-white/70" style={{ fontFamily: 'Handjet, monospace' }}>
+            {isConnected ? 'Connected' : 'Connecting...'}
           </span>
         </div>
+        <span className="text-xs text-white/50">Messages expire in 1 min</span>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto space-y-3 px-4 py-4">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-white/50">No messages yet. Start the conversation!</p>
+            <div className="text-center">
+              <svg className="mx-auto h-12 w-12 text-white/20 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <p className="text-sm text-white/40" style={{ fontFamily: 'Handjet, monospace' }}>
+                No messages yet. Start the conversation!
+              </p>
+            </div>
           </div>
         ) : (
           messages.map((msg) => {
@@ -308,9 +326,7 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
             return (
               <div
                 key={msg.entityKey}
-                className={`flex transition-all duration-1000 ${
-                  msg.sender === userName ? 'justify-end' : 'justify-start'
-                } ${
+                className={`flex flex-col gap-1 transition-all duration-1000 ${
                   msg.isExpired
                     ? 'opacity-0 scale-95 -translate-y-2'
                     : msg.isExpiring
@@ -318,27 +334,29 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
                     : 'opacity-100 scale-100'
                 }`}
               >
-                <div
-                  className={`max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-500 ${
-                    msg.sender === userName
-                      ? 'bg-blue-500/30 text-white'
-                      : 'bg-white/20 text-white'
-                  } ${
-                    msg.isExpiring ? 'border border-yellow-400/50 shadow-lg shadow-yellow-400/20' : ''
-                  }`}
-                >
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="text-xs font-bold text-white/90">{msg.sender}</span>
-                    <span className="text-xs text-white/50">
-                      {new Date(msg.timestamp).toLocaleTimeString()}
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 border border-white/20">
+                    <span className="text-xs font-bold text-white">
+                      {msg.sender.charAt(0).toUpperCase()}
                     </span>
-                    {msg.isExpiring && (
-                      <span className="text-xs font-bold text-yellow-300 animate-pulse">
-                        {secondsRemaining}s
-                      </span>
-                    )}
                   </div>
-                  <p className="text-sm break-words">{msg.content}</p>
+                  <span className="text-xs font-semibold text-white/80" style={{ fontFamily: 'Handjet, monospace' }}>
+                    {msg.sender}
+                  </span>
+                  <span className="text-xs text-white/30">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {msg.isExpiring && (
+                    <div className="ml-auto flex items-center gap-1">
+                      <svg className="h-3 w-3 text-yellow-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-xs font-mono text-yellow-400/70">{secondsRemaining}s</span>
+                    </div>
+                  )}
+                </div>
+                <div className="ml-9 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm">
+                  <p className="text-sm text-white/90 leading-relaxed break-words">{msg.content}</p>
                 </div>
               </div>
             );
@@ -348,29 +366,42 @@ export default function ArkivChat({ roomId = 'default', userName = 'Anonymous' }
       </div>
 
       {/* Input */}
-      <div className="border-t border-white/20 p-4">
+      <div className="border-t border-white/10 px-4 py-3">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
+            placeholder="Type a message... (Press Enter to send)"
             disabled={!isConnected || isSending}
-            className="flex-1 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-white placeholder-white/40 outline-none transition focus:border-white/40 focus:bg-white/20 disabled:opacity-50"
+            className="flex-1 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/40 focus:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ fontFamily: 'Handjet, monospace' }}
           />
           <button
             onClick={sendMessage}
             disabled={!isConnected || !input.trim() || isSending}
-            className="rounded-full bg-blue-500 px-6 py-2 font-bold text-white transition hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 px-6 py-2 text-sm font-bold text-white transition hover:from-cyan-400 hover:to-purple-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:from-gray-500 disabled:to-gray-500"
             style={{ fontFamily: 'Handjet, monospace' }}
           >
-            {isSending ? 'Sending...' : 'Send'}
+            {isSending ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sending
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send
+              </>
+            )}
           </button>
         </div>
-        <p className="mt-2 text-xs text-white/50">
-          Press Enter to send • Shift+Enter for new line
-        </p>
       </div>
     </div>
   );

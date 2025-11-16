@@ -397,26 +397,6 @@ export default function SynthwaveBackground() {
       />
     </div>
 
-    {/* Animation Control Button */}
-    <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsPlaying(!isPlaying);
-      }}
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-8 py-3 rounded-full font-bold text-base uppercase tracking-wider transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
-      style={{
-        fontFamily: "'Handjet', monospace",
-        background: 'rgba(255, 255, 255, 0.2)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: '2px solid rgba(255, 255, 255, 0.3)',
-        color: '#fff',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-      }}
-    >
-      {isPlaying ? '⏸ Pause' : '▶ Play'}
-    </button>
     </>
   );
 }

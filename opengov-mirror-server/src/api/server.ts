@@ -159,6 +159,46 @@ export function createServer() {
   });
 
   /**
+   * Get all proposals with vote stats (must be before /proposals/:id)
+   */
+  app.get('/proposals/all', validatePagination, async (_req: Request, res: Response) => {
+    try {
+      // Get all completed proposals (mirrored to Paseo)
+      const proposals = db.getAll({ status: 'completed' });
+
+      // Add vote stats to all proposals
+      const proposalsWithStats = [];
+      for (const proposal of proposals) {
+        if (proposal.paseoVoteContractAddress) {
+          try {
+            const voteStats = await paseoService.getVoteStats(proposal.paseoVoteContractAddress);
+            proposalsWithStats.push({
+              ...proposal,
+              voteStats,
+            });
+          } catch (error) {
+            logger.warn({
+              msg: 'Failed to get vote stats',
+              proposalId: proposal.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
+
+      res.json(proposalsWithStats);
+    } catch (error) {
+      logger.error({
+        msg: 'Failed to get all proposals with stats',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({
+        error: 'Failed to fetch proposals',
+      });
+    }
+  });
+
+  /**
    * Get active/deciding proposals (must be before /proposals/:id)
    */
   app.get('/proposals/active', validatePagination, async (_req: Request, res: Response) => {

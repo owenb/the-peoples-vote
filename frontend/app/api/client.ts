@@ -49,6 +49,13 @@ export async function getActiveProposals(): Promise<ProposalWithVoteStats[]> {
 }
 
 /**
+ * Get all proposals with vote stats (including finalized ones)
+ */
+export async function getAllProposalsWithStats(): Promise<ProposalWithVoteStats[]> {
+  return fetchApi<ProposalWithVoteStats[]>('/proposals/all');
+}
+
+/**
  * Get a single proposal by ID (without Arkiv content or vote stats)
  */
 export async function getProposal(id: number): Promise<Proposal> {

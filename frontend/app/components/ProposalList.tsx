@@ -1,6 +1,6 @@
 'use client';
 
-import { useActiveProposals } from '../hooks/useProposals';
+import { useAllProposalsWithStats } from '../hooks/useProposals';
 import type { ProposalWithVoteStats } from '../api/types';
 
 interface ProposalCardProps {
@@ -82,13 +82,13 @@ interface ProposalListProps {
 }
 
 export default function ProposalList({ onSelectProposal }: ProposalListProps) {
-  const { data: proposals, isLoading, error } = useActiveProposals();
+  const { data: proposals, isLoading, error } = useAllProposalsWithStats();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-white/70" style={{ fontFamily: 'Handjet, monospace' }}>
-          Loading active proposals...
+          Loading proposals...
         </div>
       </div>
     );
@@ -109,7 +109,7 @@ export default function ProposalList({ onSelectProposal }: ProposalListProps) {
     return (
       <div className="rounded-2xl border border-white/20 bg-white/10 p-12 text-center">
         <p className="text-white/70" style={{ fontFamily: 'Handjet, monospace' }}>
-          No active proposals available
+          No proposals available
         </p>
       </div>
     );
@@ -121,7 +121,7 @@ export default function ProposalList({ onSelectProposal }: ProposalListProps) {
         className="mb-4 text-2xl font-bold text-white"
         style={{ fontFamily: 'Handjet, monospace' }}
       >
-        Active Proposals ({proposals.length})
+        All Proposals ({proposals.length})
       </h2>
       {proposals.map((proposal) => (
         <ProposalCard

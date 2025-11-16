@@ -8,6 +8,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import {
   getProposals,
   getActiveProposals,
+  getAllProposalsWithStats,
   getProposal,
   getProposalFull,
   getStats,
@@ -37,6 +38,19 @@ export function useActiveProposals(): UseQueryResult<ProposalWithVoteStats[], Er
   return useQuery({
     queryKey: ['proposals', 'active'],
     queryFn: () => getActiveProposals(),
+    staleTime: 1000 * 30, // 30 seconds
+    refetchInterval: 1000 * 60, // Refetch every minute
+  });
+}
+
+/**
+ * Fetch all proposals with vote stats (including finalized ones)
+ * Refetches more frequently since voting status changes
+ */
+export function useAllProposalsWithStats(): UseQueryResult<ProposalWithVoteStats[], Error> {
+  return useQuery({
+    queryKey: ['proposals', 'all-with-stats'],
+    queryFn: () => getAllProposalsWithStats(),
     staleTime: 1000 * 30, // 30 seconds
     refetchInterval: 1000 * 60, // Refetch every minute
   });
