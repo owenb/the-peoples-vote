@@ -29,5 +29,18 @@ forge script script/DeployOVFactory.s.sol:DeployOVFactory \
   --etherscan-api-key $ETHERSCAN_API_KEY \
   --optimize \
   --optimizer-runs 200 \
+  --skip-simulation
+  -vvvv
+```
+
+Simplest
+``` bash
+forge script script/DeployOVFactory.s.sol:DeployOVFactory \
+  --rpc-url $SEPOLIA_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast \
+  --optimize \
+  --optimizer-runs 200 \
+  --skip-simulation
   -vvvv
 ```
