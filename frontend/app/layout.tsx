@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SynthwaveBackground from "./components/SynthwaveBackground";
-import { Providers } from "./components/Providers";
+import { ClientProviders } from "./components/ClientProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,12 +34,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased relative min-h-screen`}
       >
-        <Providers>
+        <ClientProviders>
           <SynthwaveBackground />
           <div className="relative z-30">
             {children}
           </div>
-        </Providers>
+        </ClientProviders>
       </body>
     </html>
   );
