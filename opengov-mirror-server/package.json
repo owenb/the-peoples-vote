@@ -1,0 +1,47 @@
+{
+  "name": "opengov-mirror-server",
+  "version": "2.0.0",
+  "description": "Automated system for mirroring Polkadot OpenGov proposals from Polkassembly to Paseo Asset Hub with Arkiv decentralized storage",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "sync": "tsx src/scripts/manual-sync.ts",
+    "db:init": "tsx src/scripts/init-db.ts",
+    "test": "vitest"
+  },
+  "keywords": [
+    "polkadot",
+    "opengov",
+    "arkiv",
+    "blockchain",
+    "governance"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@arkiv-network/sdk": "^0.4.4",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "better-sqlite3": "^11.7.0",
+    "axios": "^1.7.9",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/express": "^5.0.0",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
