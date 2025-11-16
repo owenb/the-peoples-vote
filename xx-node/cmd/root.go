@@ -183,7 +183,7 @@ https://git.xx.network/xx_network/xxdk-examples`,
 		// }()
 
 		// Message Reception Loop
-		waitTime := viper.GetDuration(timeoutFlag) * time.Second
+		// waitTime := viper.GetDuration(timeoutFlag) * time.Second
 		maxReceiveCnt := viper.GetInt(countFlag)
 		receiveCnt := 0
 		for done := false; !done; {
@@ -192,8 +192,8 @@ https://git.xx.network/xx_network/xxdk-examples`,
 				continue
 			}
 			select {
-			case <-time.After(waitTime):
-				done = true
+			// case <-time.After(waitTime):
+			// 	done = true
 			case m := <-recvCh:
 				// [TODO] Message reception
 				msg := myReceiver.msgData[m]
