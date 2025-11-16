@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -10,6 +11,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"gitlab.com/elixxir/client/v4/catalog"
 	"gitlab.com/elixxir/client/v4/collective/versioned"
 	"gitlab.com/elixxir/client/v4/e2e/parse"
@@ -40,16 +43,20 @@ type partResponse struct {
 	MessageType      uint32 `json:"messageType"`
 	Bytes            int    `json:"bytes"`
 	CompletedPayload string `json:"completedPayload,omitempty"`
+	TxHash           string `json:"txHash,omitempty"`
 	Info             string `json:"info,omitempty"`
 }
 
 type messageServer struct {
 	partitioner *parse.Partitioner
+	ethClient   *ethclient.Client
+	rpcURL      string
 }
 
 func main() {
 	addr := flag.String("addr", ":8080", "HTTP listen address")
 	ndfPath := flag.String("ndf", "ndf.json", "Path to the NDF JSON used to derive message size")
+	rpcURL := flag.String("rpc", "https://rpc.asset-hub-paseo.polkadot.io", "Ethereum RPC URL")
 	flag.Parse()
 
 	maxLen, err := deriveMaxMessageLength(*ndfPath)
@@ -57,14 +64,25 @@ func main() {
 		log.Fatalf("failed to derive max message length: %v", err)
 	}
 
+	// Initialize Ethereum client
+	ethClient, err := ethclient.Dial(*rpcURL)
+	if err != nil {
+		log.Fatalf("failed to connect to Ethereum RPC: %v", err)
+	}
+	defer ethClient.Close()
+
 	kv := versioned.NewKV(ekv.MakeMemstore())
 	partitioner := parse.NewPartitioner(kv, maxLen)
-	srv := &messageServer{partitioner: partitioner}
+	srv := &messageServer{
+		partitioner: partitioner,
+		ethClient:   ethClient,
+		rpcURL:      *rpcURL,
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/parts", srv.handlePart)
 
-	log.Printf("server ready on %s (max message length %d bytes)", *addr, maxLen)
+	log.Printf("server ready on %s (max message length %d bytes, RPC: %s)", *addr, maxLen, *rpcURL)
 	if err := http.ListenAndServe(*addr, mux); err != nil {
 		log.Fatalf("server stopped: %v", err)
 	}
@@ -115,7 +133,21 @@ func (s *messageServer) handlePart(w http.ResponseWriter, r *http.Request) {
 
 	if complete {
 		resp.CompletedPayload = base64.StdEncoding.EncodeToString(msg.Payload)
-		resp.Info = fmt.Sprintf("assembled %d bytes from sender %s", len(msg.Payload), msg.Sender)
+
+		// If this is a signed transaction (message type 10), broadcast it to Ethereum
+		if messageType == 10 {
+			txHash, err := s.broadcastTransaction(msg.Payload)
+			if err != nil {
+				log.Printf("[broadcast] Failed to broadcast transaction: %v", err)
+				resp.Info = fmt.Sprintf("assembled %d bytes but failed to broadcast: %v", len(msg.Payload), err)
+			} else {
+				resp.TxHash = txHash
+				resp.Info = fmt.Sprintf("assembled %d bytes from sender %s, broadcast as %s", len(msg.Payload), msg.Sender, txHash)
+				log.Printf("[broadcast] Transaction broadcast successful: %s", txHash)
+			}
+		} else {
+			resp.Info = fmt.Sprintf("assembled %d bytes from sender %s", len(msg.Payload), msg.Sender)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -153,6 +185,22 @@ func parseSender(input string) (*id.ID, error) {
 	}
 
 	return sender, nil
+}
+
+func (s *messageServer) broadcastTransaction(signedTxBytes []byte) (string, error) {
+	// Decode the signed transaction
+	tx := new(types.Transaction)
+	if err := tx.UnmarshalBinary(signedTxBytes); err != nil {
+		return "", fmt.Errorf("failed to unmarshal transaction: %w", err)
+	}
+
+	// Broadcast to Ethereum
+	ctx := context.Background()
+	if err := s.ethClient.SendTransaction(ctx, tx); err != nil {
+		return "", fmt.Errorf("failed to send transaction: %w", err)
+	}
+
+	return tx.Hash().Hex(), nil
 }
 
 func deriveMaxMessageLength(ndfPath string) (int, error) {

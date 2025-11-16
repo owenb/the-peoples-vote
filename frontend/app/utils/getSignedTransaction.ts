@@ -1,11 +1,12 @@
 // frontend/app/utils/getSignedTransaction.ts
-import { getPublicClient, getWalletClient } from '@wagmi/core'
+import { getWalletClient } from '@wagmi/core'
 import type {
   Abi,
   Address,
   Hex,
   SendTransactionParameters,
 } from 'viem'
+import { encodeFunctionData } from 'viem'
 import { config } from '../config/wagmi'
 
 export type ChainId = (typeof config)['chains'][number]['id']
@@ -29,30 +30,35 @@ export async function getSignedTransaction(
 ): Promise<GetSignedTransactionResult> {
   const { address, abi, functionName, args, account, chainId } = params
 
-  // viem clients from wagmi – type-narrowed to avoid insane unions
-  const publicClient = getPublicClient(config, { chainId }) as any
+  // Get wallet client only - no RPC client needed
   const walletClient = (await getWalletClient(config, { chainId })) as any
 
   if (!walletClient) {
     throw new Error('No wallet client available (wallet not connected?)')
   }
 
-  // 1) Build the tx request (no signing, no send)
-  const { request } = await publicClient.simulateContract({
-    address,
+  // 1) Encode the contract function call locally (no RPC needed)
+  const data = encodeFunctionData({
     abi,
     functionName,
     args,
-    account,
   })
 
-  // 2) Sign the transaction, but DO NOT send it
-  const signedTx = await walletClient.signTransaction(
-    request as SendTransactionParameters,
-  )
+  // 2) Build minimal transaction request
+  //    The wallet will fill in nonce, gas, and fees via its own provider
+  const request: SendTransactionParameters = {
+    to: address,
+    data,
+    account,
+    chainId,
+    value: 0n,
+  }
+
+  // 3) Sign the transaction (wallet handles nonce/gas internally)
+  const signedTx = await walletClient.signTransaction(request)
 
   return {
-    request: request as SendTransactionParameters,
+    request,
     signedTx,
   }
 }

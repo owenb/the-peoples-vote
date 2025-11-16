@@ -251,3 +251,94 @@ body {
 .animate-fade-in {
   animation: fade-in 0.5s ease-out forwards;
 }
+
+/* RainbowKit Custom Styling */
+[data-rk] {
+  --rk-radii-modal: 16px;
+  --rk-radii-actionButton: 12px;
+  --rk-radii-connectButton: 12px;
+}
+
+/* Modal Container - Transparent Blur */
+[data-rk] .iekbcc0 {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Modal Content Background */
+[data-rk] [role="dialog"] {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Account Modal Container */
+[data-rk] .ju367v9 {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Wallet Options Background */
+[data-rk] .ju367v7,
+[data-rk] .ju367v8 {
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+/* Button Hover States */
+[data-rk] button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Connect Button */
+[data-rk] .iekbcc0 button {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  font-size: 0.875rem !important;
+}
+
+/* Smaller Font Sizes */
+[data-rk] * {
+  font-size: 0.875rem !important;
+}
+
+[data-rk] h1,
+[data-rk] h2 {
+  font-size: 1rem !important;
+}
+
+[data-rk] h3 {
+  font-size: 0.9375rem !important;
+}
+
+/* Wallet Name Text */
+[data-rk] .ju367va {
+  font-size: 0.875rem !important;
+}
+
+/* Balance Text */
+[data-rk] .ju367vd {
+  font-size: 0.8125rem !important;
+}
+
+/* Small Text */
+[data-rk] small,
+[data-rk] .ju367ve {
+  font-size: 0.75rem !important;
+}
+
+/* Modal Overlay */
+[data-rk] [data-testid="rk-account-modal-overlay"],
+[data-rk] .ju367v0 {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}

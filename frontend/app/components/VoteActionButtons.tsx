@@ -32,7 +32,7 @@ export function VoteActionButtons({
   isComplete,
   onSuccess,
 }: VoteActionButtonsProps) {
-  const { inscribe, vote, isBusy, logs, clearLogs } = useVoteActions(voteAddress);
+  const { inscribe, vote, isBusy, logs, clearLogs } = useVoteActions(voteAddress, voteAbi);
 
   const handleRegister = async () => {
     const result = await inscribe();
@@ -212,7 +212,7 @@ export function RegisterButton({ voteAddress, voteAbi, onSuccess }: {
   voteAbi: Abi;
   onSuccess?: () => void;
 }) {
-  const { inscribe, isBusy } = useVoteActions(voteAddress);
+  const { inscribe, isBusy } = useVoteActions(voteAddress, voteAbi);
 
   const handleClick = async () => {
     const result = await inscribe();
@@ -248,7 +248,7 @@ export function VoteYesButton({ voteAddress, voteAbi, onSuccess }: {
   voteAbi: Abi;
   onSuccess?: () => void;
 }) {
-  const { vote, isBusy } = useVoteActions(voteAddress);
+  const { vote, isBusy } = useVoteActions(voteAddress, voteAbi);
 
   const handleClick = async () => {
     const result = await vote(true);
@@ -280,7 +280,7 @@ export function VoteNoButton({ voteAddress, voteAbi, onSuccess }: {
   voteAbi: Abi;
   onSuccess?: () => void;
 }) {
-  const { vote, isBusy } = useVoteActions(voteAddress);
+  const { vote, isBusy } = useVoteActions(voteAddress, voteAbi);
 
   const handleClick = async () => {
     const result = await vote(false);

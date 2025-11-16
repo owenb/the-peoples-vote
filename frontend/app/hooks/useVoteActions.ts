@@ -4,6 +4,7 @@
  * Handles:
  * - Voter registration (inscription with ZK proof)
  * - Vote submission (yes/no with ZK proof)
+ * - Mixnet transaction routing
  * - Loading states
  * - Error handling
  * - Transaction logs
@@ -12,14 +13,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useWriteContract } from 'wagmi';
-import type { Address } from 'viem';
+import { useAccount } from 'wagmi';
+import type { Address, Abi } from 'viem';
 
-import VoteJson from '../../open_vote_contracts/out/Vote.sol/Vote.json';
-import {
-  waitForReceipt,
-  castVoteOnVote,
-} from '../utils/vote';
+import { getSignedTransaction } from '../utils/getSignedTransaction';
+import type { ChainId } from '../utils/getSignedTransaction';
+import { paseoAssetHub } from '../config/wagmi';
 
 import Crypto, {
   getRandomValue,
@@ -30,6 +29,9 @@ import Crypto, {
   u8ToHex,
 } from '../utils/cryptography';
 
+import { sendSignedTransaction } from '../../lib/mixnet/client';
+import type { PartSendProgress } from '../../types/mixnet';
+
 export interface VoteActionsResult {
   inscribe: () => Promise<{ success: boolean; txHash?: string; error?: unknown }>;
   vote: (value: boolean) => Promise<{ success: boolean; txHash?: string; error?: unknown }>;
@@ -38,8 +40,12 @@ export interface VoteActionsResult {
   clearLogs: () => void;
 }
 
-export function useVoteActions(voteAddress: Address): VoteActionsResult {
-  const { writeContractAsync } = useWriteContract();
+function toChainId(chainId?: number): ChainId {
+  return (chainId ?? paseoAssetHub.id) as ChainId;
+}
+
+export function useVoteActions(voteAddress: Address, voteAbi: Abi): VoteActionsResult {
+  const { address, chainId } = useAccount();
   const [isBusy, setIsBusy] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
 
@@ -53,6 +59,11 @@ export function useVoteActions(voteAddress: Address): VoteActionsResult {
   }, []);
 
   const inscribe = useCallback(async () => {
+    if (!address) {
+      appendLog('❌ Please connect your wallet first');
+      return { success: false, error: 'No wallet connected' };
+    }
+
     try {
       setIsBusy(true);
       appendLog('🔐 Starting voter registration...');
@@ -78,24 +89,43 @@ export function useVoteActions(voteAddress: Address): VoteActionsResult {
       appendLog(`✅ Proof generated (${proof.length} bytes)`);
       const proofHex = u8ToHex(proof);
 
-      // 4. Submit to contract
-      appendLog('📤 Submitting registration to blockchain...');
-      const txHash = await writeContractAsync({
+      // 4. Sign transaction (do NOT send directly)
+      appendLog('✍️ Signing transaction...');
+      const { signedTx } = await getSignedTransaction({
         address: voteAddress,
-        abi: VoteJson.abi as any,
+        abi: voteAbi,
         functionName: 'enscribeVoter',
         args: [proofHex, encryptedRandomValueHex],
+        account: address as Address,
+        chainId: toChainId(chainId),
       });
 
-      appendLog(`✅ Transaction sent: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`);
+      appendLog(`✅ Transaction signed: ${signedTx.slice(0, 10)}...${signedTx.slice(-8)}`);
 
-      // 5. Wait for confirmation
-      appendLog('⏳ Waiting for confirmation...');
-      const receipt = await waitForReceipt(txHash);
-      appendLog(`✅ Confirmed in block ${receipt.blockNumber?.toString() ?? 'unknown'}`);
-      appendLog('🎉 Registration complete!');
+      // 5. Send via mixnet
+      appendLog('🌐 Routing through mixnet...');
+      const onProgress = (progress: PartSendProgress) => {
+        if (progress.status === 'sending') {
+          appendLog(`📤 Sending part ${progress.partIndex + 1}/${progress.totalParts} via mixnet...`);
+        }
+      };
 
-      return { success: true, txHash };
+      const result = await sendSignedTransaction(signedTx, onProgress);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send via mixnet');
+      }
+
+      appendLog(`✅ Transaction sent via mixnet (${result.numParts} parts)`);
+
+      if (result.txHash) {
+        appendLog(`✅ Broadcast to blockchain: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}`);
+        appendLog('🎉 Registration complete!');
+        return { success: true, txHash: result.txHash };
+      } else {
+        appendLog('⏳ Transaction submitted to mixnet, awaiting confirmation...');
+        return { success: true };
+      }
     } catch (error: any) {
       console.error('Inscription failed:', error);
       appendLog(`❌ Error: ${error.message || String(error)}`);
@@ -103,9 +133,14 @@ export function useVoteActions(voteAddress: Address): VoteActionsResult {
     } finally {
       setIsBusy(false);
     }
-  }, [voteAddress, writeContractAsync, appendLog]);
+  }, [voteAddress, voteAbi, address, chainId, appendLog]);
 
   const vote = useCallback(async (value: boolean) => {
+    if (!address) {
+      appendLog('❌ Please connect your wallet first');
+      return { success: false, error: 'No wallet connected' };
+    }
+
     try {
       setIsBusy(true);
       appendLog(`🗳️ Starting vote submission (${value ? 'YES' : 'NO'})...`);
@@ -141,25 +176,43 @@ export function useVoteActions(voteAddress: Address): VoteActionsResult {
 
       const proofHex = u8ToHex(proof);
 
-      // 5. Submit vote to contract
-      appendLog('📤 Submitting vote to blockchain...');
-      const txHash = await castVoteOnVote({
-        writeContractAsync,
-        voteAddress,
-        voteAbi: VoteJson.abi as any,
+      // 5. Sign transaction (do NOT send directly)
+      appendLog('✍️ Signing transaction...');
+      const { signedTx } = await getSignedTransaction({
+        address: voteAddress,
+        abi: voteAbi,
         functionName: 'vote',
         args: [proofHex, encHex],
+        account: address as Address,
+        chainId: toChainId(chainId),
       });
 
-      appendLog(`✅ Transaction sent: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`);
+      appendLog(`✅ Transaction signed: ${signedTx.slice(0, 10)}...${signedTx.slice(-8)}`);
 
-      // 6. Wait for confirmation
-      appendLog('⏳ Waiting for confirmation...');
-      const receipt = await waitForReceipt(txHash);
-      appendLog(`✅ Confirmed in block ${receipt.blockNumber?.toString() ?? 'unknown'}`);
-      appendLog('🎉 Vote submitted successfully!');
+      // 6. Send via mixnet
+      appendLog('🌐 Routing through mixnet...');
+      const onProgress = (progress: PartSendProgress) => {
+        if (progress.status === 'sending') {
+          appendLog(`📤 Sending part ${progress.partIndex + 1}/${progress.totalParts} via mixnet...`);
+        }
+      };
 
-      return { success: true, txHash };
+      const result = await sendSignedTransaction(signedTx, onProgress);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send via mixnet');
+      }
+
+      appendLog(`✅ Transaction sent via mixnet (${result.numParts} parts)`);
+
+      if (result.txHash) {
+        appendLog(`✅ Broadcast to blockchain: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}`);
+        appendLog('🎉 Vote submitted successfully!');
+        return { success: true, txHash: result.txHash };
+      } else {
+        appendLog('⏳ Transaction submitted to mixnet, awaiting confirmation...');
+        return { success: true };
+      }
     } catch (error: any) {
       console.error('Vote failed:', error);
       appendLog(`❌ Error: ${error.message || String(error)}`);
@@ -167,7 +220,7 @@ export function useVoteActions(voteAddress: Address): VoteActionsResult {
     } finally {
       setIsBusy(false);
     }
-  }, [voteAddress, writeContractAsync, appendLog]);
+  }, [voteAddress, voteAbi, address, chainId, appendLog]);
 
   return { inscribe, vote, isBusy, logs, clearLogs };
 }
