@@ -237,13 +237,10 @@ export class SyncService {
             }
           )).cid;
 
-          const expiration = Math.floor(Date.now() / 1000) + settings.proposal.expirationOffsetSeconds;
-
           const paseoResult = await this.paseo.createVote({
             name: proposal.polkassemblyTitle.substring(0, 50),
             description: arkivCid,
             numberOfVoters: settings.proposal.defaultNumberOfVoters,
-            expiration,
           });
 
           db.updatePaseo(

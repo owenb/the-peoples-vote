@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { settings } from '../config.js';
 import { logger } from '../utils/logger.js';
 import voteFactoryAbi from '../contracts/VoteFactory.abi.json' assert { type: 'json' };
+import voteAbi from '../contracts/Vote.abi.json' assert { type: 'json' };
 
 export interface CreateVoteParams {
   name: string;
@@ -13,6 +14,21 @@ export interface CreateVoteResult {
   contractAddress: string;
   txHash: string;
   blockNumber: number;
+}
+
+export interface VoteStats {
+  enscribedVoters: number;
+  votedVoters: number;
+  maximalNumberOfVoters: number;
+  yesVotes: number;
+  finalVote: boolean | null;
+  voters: Array<{
+    address: string;
+    hasVoted: boolean;
+  }>;
+  isInscriptionOpen: boolean;
+  isVotingOpen: boolean;
+  isFinalized: boolean;
 }
 
 export class PaseoService {
@@ -211,6 +227,117 @@ export class PaseoService {
     } catch (error) {
       logger.error({
         msg: 'Failed to get balance',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get vote statistics from a Vote contract
+   */
+  async getVoteStats(contractAddress: string): Promise<VoteStats> {
+    try {
+      const voteContract = new ethers.Contract(
+        contractAddress,
+        voteAbi,
+        this.provider
+      );
+
+      // Fetch all data in parallel
+      const [
+        enscribedVoters,
+        votedVoters,
+        maximalNumberOfVoters,
+        yesVotes,
+        registeredVoters,
+      ] = await Promise.all([
+        voteContract.s_enscribedVoters(),
+        voteContract.s_votedVoters(),
+        voteContract.s_maximalNumberOfVoters(),
+        voteContract.s_yesVotes(),
+        voteContract.getRegisteredVoters(),
+      ]);
+
+      const enscribedCount = Number(enscribedVoters);
+      const votedCount = Number(votedVoters);
+      const maxVoters = Number(maximalNumberOfVoters);
+      const yesCount = Number(yesVotes);
+
+      // Map voters
+      const [voterAddresses, hasVotedArray] = registeredVoters;
+      const voters = voterAddresses.map((addr: string, idx: number) => ({
+        address: addr,
+        hasVoted: hasVotedArray[idx],
+      }));
+
+      // Determine state
+      const isInscriptionOpen = enscribedCount < maxVoters;
+      const isVotingOpen = enscribedCount === maxVoters && votedCount < enscribedCount;
+      const isFinalized = votedCount === enscribedCount && enscribedCount === maxVoters;
+
+      // Try to get final vote if finalized
+      let finalVote: boolean | null = null;
+      if (isFinalized) {
+        try {
+          finalVote = await voteContract.get_finalVote();
+        } catch (error) {
+          // Vote might not be finalized yet
+          logger.debug({
+            msg: 'Final vote not yet available',
+            contractAddress,
+          });
+        }
+      }
+
+      logger.info({
+        msg: 'Retrieved vote stats',
+        contractAddress,
+        enscribedVoters: enscribedCount,
+        votedVoters: votedCount,
+        isFinalized,
+      });
+
+      return {
+        enscribedVoters: enscribedCount,
+        votedVoters: votedCount,
+        maximalNumberOfVoters: maxVoters,
+        yesVotes: yesCount,
+        finalVote,
+        voters,
+        isInscriptionOpen,
+        isVotingOpen,
+        isFinalized,
+      };
+    } catch (error) {
+      logger.error({
+        msg: 'Failed to get vote stats',
+        contractAddress,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get metadata from VoteFactory for a specific vote ID
+   */
+  async getVoteMetadata(voteId: number): Promise<{
+    name: string;
+    description: string;
+    numberOfVoters: number;
+  }> {
+    try {
+      const metadata = await this.voteFactory.getMetadata(voteId);
+      return {
+        name: metadata[0],
+        description: metadata[1],
+        numberOfVoters: Number(metadata[2]),
+      };
+    } catch (error) {
+      logger.error({
+        msg: 'Failed to get vote metadata',
+        voteId,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
