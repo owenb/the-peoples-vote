@@ -1,11 +1,9 @@
 'use client';
 
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import type { Address, Abi } from 'viem';
 
 import { paseoAssetHub } from '../config/wagmi';
-import { getSignedTransaction } from '../utils/getSignedTransaction';
-import type { ChainId } from '../utils/getSignedTransaction';
 
 import Crypto, {
   getRandomValue,
@@ -21,14 +19,15 @@ type BaseProps = {
   voteAbi: Abi;
 };
 
-function toChainId(chainId?: number): ChainId {
-  return (chainId ?? paseoAssetHub.id) as ChainId;
+function toChainId(chainId?: number): number {
+  return chainId ?? paseoAssetHub.id;
 }
 
 /* ───────────────── YES BUTTON – vote(true) with proof ───────────────── */
 
 export function VoteYesButton({ voteAddress, voteAbi }: BaseProps) {
   const { address, chainId } = useAccount();
+  const { writeContractAsync } = useWriteContract();
 
   async function handleClick() {
     if (!address) {
@@ -53,30 +52,29 @@ export function VoteYesButton({ voteAddress, voteAbi }: BaseProps) {
       console.log('[vote YES] Proof size (bytes):', proof.length);
       console.log('[vote YES] publicInputs:', publicInputs);
 
-      // Same safety check as your reference implementation
+      // Safety check like in the reference repo
       if (
         BigInt(publicInputs[0]) !== BigInt(Crypto.generator) ||
         BigInt(publicInputs[1]) !== BigInt(enc)
       ) {
-        console.error('[vote YES] ❌ Prover public inputs mismatch — aborting signing');
+        console.error('[vote YES] ❌ Prover public inputs mismatch — aborting tx');
         return;
       }
       console.log('[vote YES] ✅ Prover public inputs match!');
 
       const proofHex = u8ToHex(proof);
 
-      // Sign tx, do not send
-      const { request, signedTx } = await getSignedTransaction({
+      // Send tx via wagmi instead of signTransaction
+      const txHash = await writeContractAsync({
         address: voteAddress,
         abi: voteAbi,
         functionName: 'vote', // vote(bytes proof, bytes32 encrypted_vote)
         args: [proofHex, encHex],
-        account: address as Address,
         chainId: toChainId(chainId),
+        account: address as Address,
       });
 
-      console.log('[vote YES] tx request:', request);
-      console.log('[vote YES] signed raw tx:', signedTx);
+      console.log('[vote YES] tx hash:', txHash);
     } catch (err) {
       console.error('[vote YES] error:', err);
     }
@@ -109,6 +107,7 @@ export function VoteYesButton({ voteAddress, voteAbi }: BaseProps) {
 
 export function VoteNoButton({ voteAddress, voteAbi }: BaseProps) {
   const { address, chainId } = useAccount();
+  const { writeContractAsync } = useWriteContract();
 
   async function handleClick() {
     if (!address) {
@@ -137,24 +136,23 @@ export function VoteNoButton({ voteAddress, voteAbi }: BaseProps) {
         BigInt(publicInputs[0]) !== BigInt(Crypto.generator) ||
         BigInt(publicInputs[1]) !== BigInt(enc)
       ) {
-        console.error('[vote NO] ❌ Prover public inputs mismatch — aborting signing');
+        console.error('[vote NO] ❌ Prover public inputs mismatch — aborting tx');
         return;
       }
       console.log('[vote NO] ✅ Prover public inputs match!');
 
       const proofHex = u8ToHex(proof);
 
-      const { request, signedTx } = await getSignedTransaction({
+      const txHash = await writeContractAsync({
         address: voteAddress,
         abi: voteAbi,
         functionName: 'vote', // vote(bytes proof, bytes32 encrypted_vote)
         args: [proofHex, encHex],
-        account: address as Address,
         chainId: toChainId(chainId),
+        account: address as Address,
       });
 
-      console.log('[vote NO] tx request:', request);
-      console.log('[vote NO] signed raw tx:', signedTx);
+      console.log('[vote NO] tx hash:', txHash);
     } catch (err) {
       console.error('[vote NO] error:', err);
     }
@@ -187,6 +185,7 @@ export function VoteNoButton({ voteAddress, voteAbi }: BaseProps) {
 
 export function RegisterButton({ voteAddress, voteAbi }: BaseProps) {
   const { address, chainId } = useAccount();
+  const { writeContractAsync } = useWriteContract();
 
   async function handleClick() {
     if (!address) {
@@ -213,19 +212,16 @@ export function RegisterButton({ voteAddress, voteAbi }: BaseProps) {
 
       const proofHex = u8ToHex(proof); // bytes
 
-      // If you want extra consistency checks, you can inspect publicInputs here
-
-      const { request, signedTx } = await getSignedTransaction({
+      const txHash = await writeContractAsync({
         address: voteAddress,
         abi: voteAbi,
         functionName: 'enscribeVoter', // enscribeVoter(bytes proof, bytes32 encrypted_random_value)
         args: [proofHex, encryptedRandomHex],
-        account: address as Address,
         chainId: toChainId(chainId),
+        account: address as Address,
       });
 
-      console.log('[register] tx request:', request);
-      console.log('[register] signed raw tx:', signedTx);
+      console.log('[register] tx hash:', txHash);
     } catch (err) {
       console.error('[register] error:', err);
     }
