@@ -1,5 +1,5 @@
 import type { Abi, Address } from 'viem'
-import { passetHubTestnet } from '../config/wagmi';
+import { paseoAssetHub } from '../config/wagmi';
 import type { Config } from 'wagmi';
 import type { WriteContractMutateAsync } from 'wagmi/query';
 
@@ -251,7 +251,7 @@ export async function createVote(opts: {
   data: CreateVoteParams;
   chainId?: number;
 }): Promise<`0x${string}`> {
-  const { writeContractAsync, arkivWallet, factoryAddress, data, chainId = passetHubTestnet.id } = opts;
+  const { writeContractAsync, arkivWallet, factoryAddress, data, chainId = paseoAssetHub.id } = opts;
   // [TODO] Store description on arkiv. 
   // Instead of storing the description on the blockchain, store only the key
   const { name, description, numberOfVoters } = data;
@@ -295,7 +295,7 @@ export async function inscribeOnVote(opts: {
     account,
     functionName = 'inscribe',
     args = [],
-    chainId = passetHubTestnet.id as ChainId,
+    chainId = paseoAssetHub.id as ChainId,
   } = opts
 
   // Build & sign tx, but don’t send it yet
@@ -352,7 +352,7 @@ export async function castVoteOnVote(opts: {
     voteAbi,
     functionName = 'vote',
     args = [],
-    chainId = passetHubTestnet.id,
+    chainId = paseoAssetHub.id,
   } = opts;
 
   const hash = await writeContractAsync({
@@ -546,7 +546,7 @@ export async function enscribeVoterTx(opts: {
     voteAbi,
     proof,
     encryptedRandomValue,
-    chainId = passetHubTestnet.id,
+    chainId = paseoAssetHub.id,
   } = opts;
 
   // NOTE: Vote.sol method is enscribeVoter(bytes, bytes32)

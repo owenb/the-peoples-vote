@@ -1,5 +1,5 @@
 import { createPublicClient, http, type PublicClient } from 'viem';
-import { passetHubTestnet } from '../wagmi';
+import { paseoAssetHub } from '../config/wagmi';
 
 /**
  * Simple singleton for a viem PublicClient.
@@ -11,7 +11,7 @@ class PublicClientSingleton {
   static get(): PublicClient {
     if (!this._client) {
       this._client = createPublicClient({
-        chain: passetHubTestnet,
+        chain: paseoAssetHub,
         transport: http('https://testnet-passet-hub-eth-rpc.polkadot.io'),
       });
     }

@@ -4,6 +4,7 @@ import { db } from '../database/db.js';
 import { SyncService } from '../services/sync.service.js';
 import { ArkivService } from '../services/arkiv.service.js';
 import { PaseoService } from '../services/paseo.service.js';
+import { ChatService } from '../services/chat.service.js';
 import { settings } from '../config.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -19,6 +20,7 @@ export function createServer() {
   const syncService = new SyncService();
   const arkivService = new ArkivService();
   const paseoService = new PaseoService();
+  const chatService = new ChatService();
 
   // Middleware
   app.use(cors({
@@ -368,6 +370,51 @@ export function createServer() {
         message: error instanceof Error ? error.message : String(error),
       });
     }
+  });
+
+  /**
+   * Send a chat message (privacy-preserving: all messages sent from server address)
+   */
+  app.post('/chat/send', async (req: Request, res: Response) => {
+    try {
+      const { roomId, sender, content, timestamp } = req.body;
+
+      // Validate input
+      if (!roomId || !sender || !content) {
+        return res.status(400).json({
+          error: 'Missing required fields: roomId, sender, content',
+        });
+      }
+
+      // Send message via chat service
+      const result = await chatService.sendMessage({
+        roomId,
+        sender,
+        content,
+        timestamp: timestamp || Date.now(),
+      });
+
+      res.json(result);
+    } catch (error) {
+      logger.error({
+        msg: 'Failed to send chat message',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({
+        error: 'Failed to send message',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * Get chat configuration (message TTL, etc.)
+   */
+  app.get('/chat/config', (_req: Request, res: Response) => {
+    res.json({
+      messageTTL: chatService.getMessageTTL(),
+      messageTTLMinutes: chatService.getMessageTTL() / 60,
+    });
   });
 
   /**
