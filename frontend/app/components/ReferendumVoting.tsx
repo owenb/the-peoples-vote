@@ -225,9 +225,9 @@ export default function ReferendumVoting() {
               </div>
 
               {/* Voting Gauge */}
-              <div className="relative mb-6 flex items-end justify-center" style={{ height: '120px' }}>
+              <div className="relative mb-6 flex items-end justify-center" style={{ height: '100px', overflow: 'hidden' }}>
                 {/* Semi-circle gauge */}
-                <svg viewBox="0 0 200 100" className="w-full">
+                <svg viewBox="0 0 200 100" style={{ width: '200px', height: '100px', maxWidth: '100%' }}>
                   {/* Background arc */}
                   <path
                     d="M 20 100 A 80 80 0 0 1 180 100"

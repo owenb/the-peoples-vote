@@ -85,16 +85,14 @@ export default function SynthwaveBackground() {
   return (
     <>
     <div className="pointer-events-none fixed inset-0">
-      {/* Animated Gradient Background - Paused State (Pink/Purple) */}
+      {/* Static Gradient Background - Paused State (Pink/Purple) */}
       <div
         className="fixed inset-0 z-0"
         style={{
           backgroundImage: 'linear-gradient(-45deg, #FF1493, #FF00FF, #7B68EE, #9370DB, #FF1493)',
           backgroundSize: '600% 600%',
-          animation: 'gradient-shift 10s ease infinite',
           opacity: isPlaying ? 0 : 1,
           transition: 'opacity 1s ease-in-out',
-          willChange: 'background-position, opacity',
           transform: 'translateZ(0)'
         }}
       />
@@ -106,6 +104,7 @@ export default function SynthwaveBackground() {
           backgroundImage: 'linear-gradient(-45deg, #FFD700, #FF8C00, #FF1493, #FF00FF, #7B68EE, #FFD700)',
           backgroundSize: '600% 600%',
           animation: 'gradient-shift 10s ease infinite',
+          animationPlayState: isPlaying ? 'running' : 'paused',
           opacity: isPlaying ? 1 : 0,
           transition: 'opacity 1s ease-in-out',
           willChange: 'background-position, opacity',
@@ -311,6 +310,7 @@ export default function SynthwaveBackground() {
               backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(255, 0, 255, 0.7) 49px, rgba(255, 0, 255, 0.7) 51px)',
               backgroundSize: '100% 100px',
               animation: 'floor-move 2s linear infinite',
+              animationPlayState: isPlaying ? 'running' : 'paused',
               boxShadow: '0 0 30px rgba(255, 0, 255, 0.5)',
               willChange: 'transform',
               transform: 'translateZ(0)',
@@ -324,6 +324,7 @@ export default function SynthwaveBackground() {
               backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(123, 104, 238, 0.7) 79px, rgba(123, 104, 238, 0.7) 81px)',
               backgroundSize: '160px 100%',
               animation: 'floor-move 2s linear infinite',
+              animationPlayState: isPlaying ? 'running' : 'paused',
               boxShadow: '0 0 30px rgba(123, 104, 238, 0.5)',
               willChange: 'transform',
               transform: 'translateZ(0)',
@@ -336,7 +337,8 @@ export default function SynthwaveBackground() {
             style={{
               background: 'linear-gradient(90deg, transparent, #FF00FF 20%, #7B68EE 50%, #FF00FF 80%, transparent)',
               boxShadow: '0 0 20px #FF00FF, 0 0 40px #7B68EE',
-              animation: 'grid-pulse 2s ease-in-out infinite'
+              animation: 'grid-pulse 2s ease-in-out infinite',
+              animationPlayState: isPlaying ? 'running' : 'paused'
             }}
           />
           {/* Gradient Fade to Horizon */}
