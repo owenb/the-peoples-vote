@@ -45,6 +45,18 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
 
   const { voteStats, arkivContent } = proposal;
 
+  // 👇 Safe fallback when voteStats is null
+  const stats = voteStats ?? {
+    isInscriptionOpen: false,
+    isVotingOpen: false,
+    isFinalized: false,
+    enscribedVoters: 0,
+    maximalNumberOfVoters: 0,
+    votedVoters: 0,
+    yesVotes: 0,
+    finalVote: null as boolean | null,
+  };
+
   // Split content for preview (find a good break point)
   const PREVIEW_LENGTH = 1000;
   const contentPreview = arkivContent.slice(0, PREVIEW_LENGTH);
@@ -129,19 +141,24 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
 
           {/* Status Badges */}
           <div className="mb-4 flex flex-wrap gap-2">
-            {voteStats.isInscriptionOpen && (
+            {stats.isInscriptionOpen && (
               <span className="rounded-full bg-blue-500/20 px-3 py-1 text-xs text-blue-300">
                 Inscription Open
               </span>
             )}
-            {voteStats.isVotingOpen && (
+            {stats.isVotingOpen && (
               <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs text-green-300">
                 Voting Open
               </span>
             )}
-            {voteStats.isFinalized && (
+            {stats.isFinalized && (
               <span className="rounded-full bg-purple-500/20 px-3 py-1 text-xs text-purple-300">
                 Finalized
+              </span>
+            )}
+            {!voteStats && (
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/60">
+                No on-chain stats yet
               </span>
             )}
           </div>
@@ -153,33 +170,39 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
               <div className="mb-2 flex justify-between text-sm text-white/70">
                 <span>Inscribed Voters</span>
                 <span>
-                  {voteStats.enscribedVoters} / {voteStats.maximalNumberOfVoters}
+                  {stats.enscribedVoters} / {stats.maximalNumberOfVoters}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full bg-gradient-to-r from-[#00FFFF] to-[#FF00FF] transition-all"
                   style={{
-                    width: `${(voteStats.enscribedVoters / voteStats.maximalNumberOfVoters) * 100}%`,
+                    width:
+                      stats.maximalNumberOfVoters > 0
+                        ? `${(stats.enscribedVoters / stats.maximalNumberOfVoters) * 100}%`
+                        : '0%',
                   }}
                 />
               </div>
             </div>
 
             {/* Voting Progress */}
-            {voteStats.enscribedVoters > 0 && (
+            {stats.enscribedVoters > 0 && (
               <div>
                 <div className="mb-2 flex justify-between text-sm text-white/70">
                   <span>Votes Cast</span>
                   <span>
-                    {voteStats.votedVoters} / {voteStats.enscribedVoters}
+                    {stats.votedVoters} / {stats.enscribedVoters}
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all"
                     style={{
-                      width: `${(voteStats.votedVoters / voteStats.enscribedVoters) * 100}%`,
+                      width:
+                        stats.enscribedVoters > 0
+                          ? `${(stats.votedVoters / stats.enscribedVoters) * 100}%`
+                          : '0%',
                     }}
                   />
                 </div>
@@ -188,29 +211,31 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
           </div>
 
           {/* Vote Results */}
-          {voteStats.votedVoters > 0 && (
+          {stats.votedVoters > 0 && (
             <div className="mt-4 space-y-2 border-t border-white/20 pt-4">
               <div className="flex justify-between text-sm text-white/70">
                 <span>Yes Votes</span>
-                <span className="font-bold text-green-400">{voteStats.yesVotes}</span>
+                <span className="font-bold text-green-400">{stats.yesVotes}</span>
               </div>
               <div className="flex justify-between text-sm text-white/70">
                 <span>No Votes</span>
                 <span className="font-bold text-red-400">
-                  {voteStats.votedVoters - voteStats.yesVotes}
+                  {stats.votedVoters - stats.yesVotes}
                 </span>
               </div>
             </div>
           )}
 
           {/* Final Result */}
-          {voteStats.isFinalized && voteStats.finalVote !== null && (
+          {stats.isFinalized && stats.finalVote !== null && (
             <div className="mt-4 rounded-lg bg-white/10 p-3 text-center">
               <div className="text-xs text-white/50">Final Result</div>
               <div
-                className={`text-xl font-bold ${voteStats.finalVote ? 'text-green-400' : 'text-red-400'}`}
+                className={`text-xl font-bold ${
+                  stats.finalVote ? 'text-green-400' : 'text-red-400'
+                }`}
               >
-                {voteStats.finalVote ? 'PASSED' : 'REJECTED'}
+                {stats.finalVote ? 'PASSED' : 'REJECTED'}
               </div>
             </div>
           )}
