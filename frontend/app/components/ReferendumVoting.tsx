@@ -1,8 +1,15 @@
 'use client';
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import type { Abi } from 'viem';
+import VoteJson from '../../open_vote_contracts/out/Vote.sol/Vote.json';
+import { VoteYesButton, VoteNoButton, RegisterButton } from './VoteActionButtons';
+import { VOTE_CONTRACT_ADDRESS } from '../config/contracts';
 
 export default function ReferendumVoting() {
+  const voteAbi = VoteJson.abi as Abi;
+  const voteAddress = VOTE_CONTRACT_ADDRESS;
+
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 lg:px-16">
       <div className="mx-auto max-w-7xl">
@@ -69,16 +76,9 @@ export default function ReferendumVoting() {
               {/* Action Buttons */}
               <div className="mt-8 flex items-center justify-between border-t border-white/20 pt-6">
                 <div className="flex gap-3">
-                  <button className="rounded-full border border-white/20 bg-white/10 p-3 backdrop-blur-xl transition hover:bg-white/20">
-                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                    </svg>
-                  </button>
-                  <button className="rounded-full border border-white/20 bg-white/10 p-3 backdrop-blur-xl transition hover:bg-white/20">
-                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-                    </svg>
-                  </button>
+                  <VoteYesButton voteAddress={voteAddress} voteAbi={voteAbi} />
+                  <VoteNoButton voteAddress={voteAddress} voteAbi={voteAbi} />
+                  <RegisterButton voteAddress={voteAddress} voteAbi={voteAbi} />
                 </div>
                 <div className="flex gap-3">
                   <button className="rounded-full border border-white/20 bg-white/10 p-3 backdrop-blur-xl transition hover:bg-white/20">

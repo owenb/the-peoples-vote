@@ -1,4 +1,4 @@
-import type { Address } from 'viem';
+import type { Abi, Address } from 'viem'
 import { passetHubTestnet } from '../config/wagmi';
 import type { Config } from 'wagmi';
 import type { WriteContractMutateAsync } from 'wagmi/query';
@@ -10,6 +10,8 @@ import { Proposal } from './/Proposal';
 import { getArkivRpc, getProposalById } from './arkiv';
 import type { WalletArkivClient, PublicArkivClient } from "@arkiv-network/sdk";
 import { Wallet } from 'ethers';
+import { getSignedTransaction } from './getSignedTransaction';
+import type { ChainId } from './getSignedTransaction'
 
 
 export interface UiVote {
@@ -277,33 +279,50 @@ export async function waitForReceipt(hash: `0x${string}`) {
 }
 
 /* ========== Optional helpers for Vote contract (inscription & vote) ========== */
-
 export async function inscribeOnVote(opts: {
-  writeContractAsync: WriteAsync;
-  voteAddress: Address;
-  voteAbi: any;
-  functionName?: string; // default 'inscribe'
-  args?: readonly unknown[];
-  chainId?: number;
+  writeContractAsync: WriteAsync
+  voteAddress: Address
+  voteAbi: Abi
+  account: Address
+  functionName?: string // default 'inscribe'
+  args?: readonly unknown[]
+  chainId?: ChainId
 }): Promise<`0x${string}`> {
   const {
     writeContractAsync,
     voteAddress,
     voteAbi,
+    account,
     functionName = 'inscribe',
     args = [],
-    chainId = passetHubTestnet.id,
-  } = opts;
+    chainId = passetHubTestnet.id as ChainId,
+  } = opts
 
+  // Build & sign tx, but don’t send it yet
+  const { request, signedTx } = await getSignedTransaction({
+    address: voteAddress,
+    abi: voteAbi,
+    functionName,
+    args,
+    account,
+    chainId,
+  })
+
+  console.log('tx request:', request)
+  console.log('signed raw tx:', signedTx)
+
+  // Then do the normal wagmi write, which will send a tx and return its hash
   const hash = await writeContractAsync({
     address: voteAddress,
     abi: voteAbi,
     functionName,
     args,
     chainId,
-  });
-  return hash as `0x${string}`;
+  })
+
+  return hash as `0x${string}`
 }
+
 
 export async function getDecryptionShareByIndex(opts: {
   voteAddress: Address;

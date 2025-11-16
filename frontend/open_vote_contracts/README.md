@@ -36,7 +36,7 @@ forge script script/DeployOVFactory.s.sol:DeployOVFactory \
 Simplest
 ``` bash
 forge script script/DeployOVFactory.s.sol:DeployOVFactory \
-  --rpc-url $SEPOLIA_RPC_URL \
+  --rpc-url https://testnet-passet-hub-eth-rpc.polkadot.io \
   --private-key $PRIVATE_KEY \
   --broadcast \
   --optimize \

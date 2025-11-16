@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.4.5",
-    "@aztec/bb.js": "^2.1.5",
-    "@noir-lang/noir_js": "^1.0.0-beta.15",
+    "@aztec/bb.js": "^0.84.0",
+    "@noir-lang/noir_js": "1.0.0-beta.6",
     "@rainbow-me/rainbowkit": "^2.2.9",
     "@tanstack/react-query": "^5.90.9",
     "crypto": "^1.0.1",
