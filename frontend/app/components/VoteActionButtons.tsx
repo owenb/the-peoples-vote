@@ -3,7 +3,8 @@
 import { useAccount } from 'wagmi';
 import type { Address, Abi } from 'viem';
 
-import { passetHubTestnet } from '../config/wagmi';
+import { paseoAssetHub } from '../config/wagmi';
+
 import { getSignedTransaction } from '../utils/getSignedTransaction';
 import type { ChainId } from '../utils/getSignedTransaction';
 
@@ -22,7 +23,7 @@ type BaseProps = {
 };
 
 function toChainId(chainId?: number): ChainId {
-  return (chainId ?? passetHubTestnet.id) as ChainId;
+  return (chainId ?? paseoAssetHub.id) as ChainId;
 }
 
 /* ───────────────── YES BUTTON – vote(true) with proof ───────────────── */
