@@ -1,9 +1,15 @@
 'use client';
 
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+
 export default function ReferendumVoting() {
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 lg:px-16">
       <div className="mx-auto max-w-7xl">
+        {/* Header with Wallet Connect */}
+        <div className="mb-8 flex items-center justify-end">
+          <ConnectButton />
+        </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Main Content */}
           <div className="lg:col-span-2">
