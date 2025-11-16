@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.4.5",
-    "@aztec/bb.js": "^2.1.5",
-    "@noir-lang/noir_js": "^1.0.0-beta.15",
+    "@aztec/bb.js": "0.84.0",
+    "@noir-lang/noir_js": "1.0.0-beta.6",
     "@polkadot/api": "^16.5.2",
     "@polkadot/extension-dapp": "^0.62.4",
     "@polkadot/extension-inject": "^0.62.4",

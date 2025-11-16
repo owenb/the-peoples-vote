@@ -1,8 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import type { Abi, Address } from 'viem';
+
 import { useProposalFull } from '../hooks/useProposals';
 import MarkdownContent from './MarkdownContent';
+import VoteJson from '../../open_vote_contracts/out/Vote.sol/Vote.json';
+import { VoteYesButton, VoteNoButton, RegisterButton } from './VoteActionButtons';
 
 interface ProposalDetailProps {
   proposalId: number;
@@ -56,6 +60,10 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
     yesVotes: 0,
     finalVote: null as boolean | null,
   };
+
+  // Vote contract wiring for buttons
+  const voteAbi = (VoteJson as any).abi as Abi;
+  const voteAddress = proposal.paseoVoteContractAddress as Address;
 
   // Split content for preview (find a good break point)
   const PREVIEW_LENGTH = 1000;
@@ -239,6 +247,15 @@ export default function ProposalDetail({ proposalId }: ProposalDetailProps) {
               </div>
             </div>
           )}
+
+          {/* ZK Buttons */}
+          <div className="mt-6 flex items-center justify-between border-t border-white/20 pt-4">
+            <div className="flex gap-3">
+              <VoteYesButton voteAddress={voteAddress} voteAbi={voteAbi} />
+              <VoteNoButton voteAddress={voteAddress} voteAbi={voteAbi} />
+            </div>
+            <RegisterButton voteAddress={voteAddress} voteAbi={voteAbi} />
+          </div>
 
           {/* Contract Address */}
           <div className="mt-4 border-t border-white/20 pt-4">
